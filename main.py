@@ -29,6 +29,7 @@ class Enemy:
         self.ricorrenza = 0
 
     def hpCalc(self, DV):
+
         try:
             if isinstance(DV, str):
                 tempDV = DV.split()
