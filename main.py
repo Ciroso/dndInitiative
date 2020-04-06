@@ -69,7 +69,7 @@ def start():
 
 
 def roundManager(table):
-    print("round")
+    print("round", table)
 
 
 def makeBackup(table):
