@@ -17,6 +17,15 @@ class Hero:
         print(colored("Nome: ", "blue"), self.nome + " " + self.id, colored("\nCa: ", "blue"), self.ca,
               colored("\nIniziativa: ", "blue"), self.iniziativa, "\n")
 
+    def printName(self, removeMode):
+        if removeMode:
+            print(colored("Nome:", "blue"), self.nome)
+        else:
+            print(
+                colored("Iniziativa: ", "blue"), self.iniziativa,
+                colored("Nome: ", "blue"), self.nome + "\t\t" +
+                colored("Ca:", "blue"), self.ca)
+
 
 class Enemy:
     def __init__(self, Attributelist):
@@ -29,7 +38,6 @@ class Enemy:
         self.ricorrenza = 0
 
     def hpCalc(self, DV):
-
         try:
             if isinstance(DV, str):
                 tempDV = DV.split()
@@ -47,6 +55,16 @@ class Enemy:
               self.ca, colored("\nHP: ", "red"),
               self.hp, colored("\nIniziativa: ", "red"), self.iniziativa, "\n")
 
+    def printName(self, removeMode):
+        if removeMode:
+            print(colored("Nome:", "red"), self.nome + str(self.ricorrenza))
+        else:
+            print(
+                colored("Iniziativa: ", "red"), self.iniziativa,
+                colored("Nome:", "red"), self.nome + str(self.ricorrenza) + "\t\t",
+                colored("Ca:", "red"), self.ca,
+                colored("HP:", "red"), self.hp)
+
     def verifyricorrenza(self, table):
         newRicorrenza = 0
         for i in range(0, len(table)):
@@ -54,19 +72,40 @@ class Enemy:
                 newRicorrenza += 1
         self.ricorrenza = newRicorrenza
 
+    def rollInitiative(self):
+        self.iniziativa = random.randint(1, 20)
+
 
 def start():
     session = []
     if os.path.isfile('lastBackup'):
-        if input("Trovata vecchia partita, vuoi caricarla? y/n\n") in {"y", ""}:
+        if input("Trovata vecchia partita, vuoi caricarla? y/n\n") in {"y", "", "Y"}:
             session = pickle.load(open("lastbackup", "rb"))
             actualTable(session, False)
+            if input("Vuoi azzerare l'iniziativa? y/n\n") in {"y", "Y"}:
+                for s in session:
+                    s.iniziativa = 0
+
     managePlayer(session)
+    iniziativaTime(session)
     roundManager(session)
     makeBackup(session)
 
+    import operator
+    session.sort(key=operator.attrgetter('iniziativa'))
     print("PLAY")
     # os.remove("lastbackup")
+
+
+def iniziativaTime(table):
+    for c in table:
+        if c.iniziativa == 0:
+            if c.type == "enemy":
+                c.rollInitiative()
+            else:
+                print("Iniziativa per ", c.nome, end=" ")
+                c.iniziativa = int(input())
+        makeBackup(table)
 
 
 def roundManager(table):
@@ -86,7 +125,11 @@ def readFile(L, table):
         splittedRead.append(re.split('(?<!\(.),(?!.\))', tempRead[i]))
         print(str(i) + " " + str(splittedRead[i][0]))
 
-    selectedChar = input("Quale?\n").split()
+    selectedChar = input("Quale?\n")
+    if selectedChar == "0":
+        selectedChar = "1 2 3 4 5 6"
+    selectedChar = selectedChar.split()
+
     for i in selectedChar:
         if L == "party":
             table.append(Hero(splittedRead[int(i)]))
@@ -106,7 +149,7 @@ def managePlayer(table):
     wannaAdd = True
     while wannaAdd:
         req = input("A-ggiungi, R-imuovi, M-odifica, V-isualizza o E-sci?\n")
-        if req in {"A", "a", "aggiungi", ""}:
+        if req in {"A", "a", "aggiungi"}:
             reqA = input("P-arty, E-nemy, O-ther player \n")
             if reqA in {"P", "p", "party"}:
                 readFile("party", table)
@@ -126,10 +169,12 @@ def managePlayer(table):
 
 
 def actualTable(table, removeMode):
+    counter = 0
     for i in table:
         if removeMode:
-            print(i)
-        i.showMe()
+            print(colored(counter, "yellow"), end=" ")
+            counter += 1
+        i.printName(removeMode)
 
 
 if __name__ == "__main__":
