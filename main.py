@@ -3,6 +3,7 @@ import os.path
 import pickle
 from termcolor import colored
 import re
+import operator
 
 
 class Hero:
@@ -13,9 +14,6 @@ class Hero:
         self.id = AttributeList[2]
         self.iniziativa = 0
 
-    def showMe(self):
-        print(colored("Nome: ", "blue"), self.nome + " " + self.id, colored("\nCa: ", "blue"), self.ca,
-              colored("\nIniziativa: ", "blue"), self.iniziativa, "\n")
 
     def printName(self, removeMode):
         if removeMode:
@@ -23,8 +21,8 @@ class Hero:
         else:
             print(
                 colored("Iniziativa: ", "blue"), self.iniziativa,
-                colored("Nome: ", "blue"), self.nome + "\t\t" +
-                colored("Ca:", "blue"), self.ca)
+                colored("Nome:", "blue"), self.nome + "\t\t" +
+                                           colored("Ca:", "blue"), self.ca)
 
 
 class Enemy:
@@ -36,6 +34,7 @@ class Enemy:
         self.hp = self.hpCalc(Attributelist[2])
         self.iniziativa = 0
         self.ricorrenza = 0
+        self.alive = True
 
     def hpCalc(self, DV):
         try:
@@ -50,20 +49,19 @@ class Enemy:
         except:
             print("Devi fornire 'Numero dadi' 'tipo di dado' 'mod', invece tu hai fornito " + DV)
 
-    def showMe(self):
-        print(colored("Nome: ", "red"), self.nome + str(self.ricorrenza) + " " + self.id, colored("\nCa: ", "red"),
-              self.ca, colored("\nHP: ", "red"),
-              self.hp, colored("\nIniziativa: ", "red"), self.iniziativa, "\n")
-
     def printName(self, removeMode):
         if removeMode:
             print(colored("Nome:", "red"), self.nome + str(self.ricorrenza))
         else:
+            if self.alive:
+                colour = "red"
+            else:
+                colour = "grey"
             print(
-                colored("Iniziativa: ", "red"), self.iniziativa,
-                colored("Nome:", "red"), self.nome + str(self.ricorrenza) + "\t\t",
-                colored("Ca:", "red"), self.ca,
-                colored("HP:", "red"), self.hp)
+                colored("Iniziativa: ", colour), self.iniziativa,
+                colored("Nome:", colour), self.nome + str(self.ricorrenza) + "\t\t",
+                colored("Ca:", colour), self.ca,
+                colored("HP:", colour), self.hp)
 
     def verifyricorrenza(self, table):
         newRicorrenza = 0
@@ -85,16 +83,24 @@ def start():
             if input("Vuoi azzerare l'iniziativa? y/n\n") in {"y", "Y"}:
                 for s in session:
                     s.iniziativa = 0
-
     managePlayer(session)
     iniziativaTime(session)
+
     roundManager(session)
+
     makeBackup(session)
 
-    import operator
-    session.sort(key=operator.attrgetter('iniziativa'))
+    actualTable(session, False)
     print("PLAY")
-    # os.remove("lastbackup")
+
+def roundManager(table):
+    round = 0
+    print("Round: ", round)
+
+
+
+def dealDamage(table):
+
 
 
 def iniziativaTime(table):
@@ -106,10 +112,26 @@ def iniziativaTime(table):
                 print("Iniziativa per ", c.nome, end=" ")
                 c.iniziativa = int(input())
         makeBackup(table)
+    table.sort(key=operator.attrgetter('iniziativa'))
+    table.reverse()
+    fixInitiative(table)
+    for c in table:
+        c.iniziativa = truncate(c.iniziativa, 1)
 
 
-def roundManager(table):
-    print("round", table)
+def fixInitiative(table):
+    for i in range(0, len(table) - 1):
+        if table[i].iniziativa == table[i + 1].iniziativa:
+            table[i].iniziativa += 0.1
+            print(table[i].iniziativa)
+            fixInitiative(table)
+
+
+def truncate(n, decimals=0):
+    multiplier = 10 ** decimals
+    return int(n * multiplier) / multiplier
+
+
 
 
 def makeBackup(table):
@@ -134,8 +156,7 @@ def readFile(L, table):
         if L == "party":
             table.append(Hero(splittedRead[int(i)]))
         else:
-            table.append(Enemy(splittedRead[int(i)]))
-            table[-1].verifyricorrenza(table)
+            enemyAppender(splittedRead[int(i)], table)
 
 
 def throwDice(Qdv, dv, mod):
@@ -156,7 +177,7 @@ def managePlayer(table):
             elif reqA in {"E", "e", "enemy"}:
                 readFile("enemy", table)
             elif reqA in {"O", "o", "other"}:
-                table.append(Enemy)
+                enemyAppender([input("Nome: "), input("CA: "), input("dv ( esempio 2 12 +3) con 12 = dv: ")], table)
         if req in {"R", "r", "rimuovi"}:
             actualTable(table, True)
             table.pop(int(input("Chi?\n")))
@@ -166,6 +187,11 @@ def managePlayer(table):
             actualTable(table, False)
         if req in {"E", "e", "esci", "exit", ""}:
             wannaAdd = False
+
+
+def enemyAppender(lista, table):
+    table.append(Enemy(lista))
+    table[-1].verifyricorrenza(table)
 
 
 def actualTable(table, removeMode):
