@@ -6,6 +6,20 @@ import re
 import operator
 
 
+class Session:
+    initR = 0
+
+    def __init__(self, characterList, round=initR):
+        self.characterList = characterList
+        self.round = round
+
+    def save(self):
+        pickle.dump(self, open("lastbackup", "wb"))
+
+    def load(self):
+        return pickle.load(open("lastbackup", "rb"))
+
+
 class Hero:
     def __init__(self, AttributeList):
         self.type = "hero"
@@ -14,15 +28,14 @@ class Hero:
         self.id = AttributeList[2]
         self.iniziativa = 0
 
-
     def printName(self, removeMode):
         if removeMode:
             print(colored("Nome:", "blue"), self.nome)
         else:
             print(
-                colored("Iniziativa: ", "blue"), self.iniziativa,
                 colored("Nome:", "blue"), self.nome + "\t\t" +
-                                           colored("Ca:", "blue"), self.ca)
+                                          colored("Ca:", "blue"), self.ca, colored("Iniziativa: ", "blue"),
+                self.iniziativa)
 
 
 class Enemy:
@@ -50,18 +63,29 @@ class Enemy:
             print("Devi fornire 'Numero dadi' 'tipo di dado' 'mod', invece tu hai fornito " + DV)
 
     def printName(self, removeMode):
-        if removeMode:
-            print(colored("Nome:", "red"), self.nome + str(self.ricorrenza))
-        else:
-            if self.alive:
-                colour = "red"
+
+        if self.alive:
+            colour = "red"
+            if removeMode:
+                print(colored("Nome:", colour), self.nome + str(self.ricorrenza))
             else:
-                colour = "grey"
-            print(
-                colored("Iniziativa: ", colour), self.iniziativa,
-                colored("Nome:", colour), self.nome + str(self.ricorrenza) + "\t\t",
-                colored("Ca:", colour), self.ca,
-                colored("HP:", colour), self.hp)
+                print(
+                    colored("Nome:", colour), self.nome + str(self.ricorrenza) + "\t\t",
+                    colored("Ca:", colour), self.ca,
+                    colored("HP:", colour), self.hp,
+                    colored("Iniziativa: ", colour), self.iniziativa
+                )
+        else:
+            colour = "grey"
+            if removeMode:
+                print(colored(strike("Nome:"), colour), strike(self.nome + str(self.ricorrenza)))
+            else:
+                print(
+                    colored(strike("Nome:"), colour), strike(self.nome + str(self.ricorrenza)) + "\t\t",
+                    colored(strike("Ca:"), colour), strike(self.ca),
+                    colored(strike("HP:"), colour), strike(self.hp),
+                    colored(strike("Iniziativa: "), colour), strike(self.iniziativa)
+                )
 
     def verifyricorrenza(self, table):
         newRicorrenza = 0
@@ -76,11 +100,14 @@ class Enemy:
 
 def start():
     session = []
+    # sessionRestore = Session(session)
     if os.path.isfile('lastBackup'):
-        if input("Trovata vecchia partita, vuoi caricarla? y/n\n") in {"y", "", "Y"}:
+        if input("Trovata vecchia partita, vuoi caricarla? Y/n\n") in {"y", "", "Y"}:
+            # Session.load(sessionRestore)
+            # session = sessionRestore.characterList
             session = pickle.load(open("lastbackup", "rb"))
             actualTable(session, False)
-            if input("Vuoi azzerare l'iniziativa? y/n\n") in {"y", "Y"}:
+            if input("Vuoi azzerare l'iniziativa? y/N\n") in {"y", "Y", "Yes", "yes"}:
                 for s in session:
                     s.iniziativa = 0
     managePlayer(session)
@@ -88,19 +115,61 @@ def start():
 
     roundManager(session)
 
-    makeBackup(session)
+    # makeBackup(session)
 
-    actualTable(session, False)
-    print("PLAY")
+    # actualTable(session, False)
+    # print("PLAY")
+
 
 def roundManager(table):
     round = 0
-    print("Round: ", round)
+    print("------------Pronti? Si parte!------------")
+    playtime = True
+    while playtime:
+        round += 1
+        print("Round: ", round)
+        actualTable(table, False)
+        for turnMan in table:
+            print("\nE' il turno di ", end=" ")
+            turnMan.printName(False)
+            action(table, turnMan)
+            makeBackup(table)
+        enemyLeft = False
+        for turnMan in table:
+            if enemyLeft == False:
+                if (turnMan.type == "enemy") and (turnMan.alive == True):
+                    enemyLeft = True
+        if enemyLeft == False:
+            if input("Vuoi ancora mantenere la sessione attiva? Non ci sono più nemici y/N\n ") in {"No", "no", "n",
+                                                                                                    "N"}:
+                playtime = False
 
 
+def action(table, character):
+    if (character.type == "enemy") and (character.alive == False):
+        return
+    inputAction = input("Cosa succede? D-anni, C-ure, [N]-iente? \n")
+    if inputAction in {"Danni", "danni", "D", "d"}:
+        changeLife(table, "Damage")
+    elif inputAction in {"Cura", "cura", "C", "c"}:
+        changeLife(table, "Heal")
 
-def dealDamage(table):
 
+def changeLife(table, command):
+    runningAction = True
+    while runningAction:
+        print("\n \n")
+        actualTable(table, True)
+        whos = int(input("A chi? "))
+        if command == "Damage":
+            table[whos].hp -= int(input("\nDi quanto? "))
+            if table[whos].hp <= 0:
+                table[whos].alive = False
+                print("!!DIED!!")
+        elif command == "Heal":
+            table[int(input("Chi? "))].hp += int(input("\nDi quanto? "))
+        if input("E basta? y/N \n") in {"Si", "si", "s", "Yes", "yes", "y"}:
+            runningAction = False
 
 
 def iniziativaTime(table):
@@ -130,8 +199,6 @@ def fixInitiative(table):
 def truncate(n, decimals=0):
     multiplier = 10 ** decimals
     return int(n * multiplier) / multiplier
-
-
 
 
 def makeBackup(table):
@@ -169,7 +236,7 @@ def throwDice(Qdv, dv, mod):
 def managePlayer(table):
     wannaAdd = True
     while wannaAdd:
-        req = input("A-ggiungi, R-imuovi, M-odifica, V-isualizza o E-sci?\n")
+        req = input("A-ggiungi, R-imuovi, M-odifica, V-isualizza o [E]-sci dalla modalità modifica?\n")
         if req in {"A", "a", "aggiungi"}:
             reqA = input("P-arty, E-nemy, O-ther player \n")
             if reqA in {"P", "p", "party"}:
@@ -201,6 +268,10 @@ def actualTable(table, removeMode):
             print(colored(counter, "yellow"), end=" ")
             counter += 1
         i.printName(removeMode)
+
+
+def strike(text):
+    return ''.join([u'\u0336{}'.format(c) for c in text])
 
 
 if __name__ == "__main__":
