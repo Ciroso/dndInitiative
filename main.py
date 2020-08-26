@@ -8,10 +8,14 @@ import operator
 
 class Session:
     initR = 0
+    combatMode = False
 
-    def __init__(self, characterList, round=initR):
+    def __init__(self, characterList=None, round=initR, mode=combatMode):
+        if characterList is None:
+            session = []
         self.characterList = characterList
         self.round = round
+        self.combatMode = mode
 
     def save(self):
         pickle.dump(self, open("lastbackup", "wb"))
@@ -33,9 +37,8 @@ class Hero:
             print(colored("Nome:", "blue"), self.nome)
         else:
             print(
-                colored("Nome:", "blue"), self.nome + "\t\t" +
-                                          colored("Ca:", "blue"), self.ca, colored("Iniziativa: ", "blue"),
-                self.iniziativa)
+                colored("Nome:", "blue"), self.nome + "\t\t" + colored("Ca:", "blue"),
+                self.ca, colored("Iniziativa: ", "blue"), self.iniziativa)
 
 
 class Enemy:
@@ -73,8 +76,7 @@ class Enemy:
                     colored("Nome:", colour), self.nome + str(self.ricorrenza) + "\t\t",
                     colored("Ca:", colour), self.ca,
                     colored("HP:", colour), self.hp,
-                    colored("Iniziativa: ", colour), self.iniziativa
-                )
+                    colored("Iniziativa: ", colour), self.iniziativa)
         else:
             colour = "grey"
             if removeMode:
@@ -83,8 +85,8 @@ class Enemy:
                 print(
                     colored(strike("Nome:"), colour), strike(self.nome + str(self.ricorrenza)) + "\t\t",
                     colored(strike("Ca:"), colour), strike(self.ca),
-                    colored(strike("HP:"), colour), strike(self.hp),
-                    colored(strike("Iniziativa: "), colour), strike(self.iniziativa)
+                    colored(strike("HP:"), colour), strike(str(self.hp)),
+                    colored(strike("Iniziativa: "), colour), strike(str(self.iniziativa))
                 )
 
     def verifyricorrenza(self, table):
@@ -100,11 +102,8 @@ class Enemy:
 
 def start():
     session = []
-    # sessionRestore = Session(session)
     if os.path.isfile('lastBackup'):
         if input("Trovata vecchia partita, vuoi caricarla? Y/n\n") in {"y", "", "Y"}:
-            # Session.load(sessionRestore)
-            # session = sessionRestore.characterList
             session = pickle.load(open("lastbackup", "rb"))
             actualTable(session, False)
             if input("Vuoi azzerare l'iniziativa? y/N\n") in {"y", "Y", "Yes", "yes"}:
@@ -112,14 +111,7 @@ def start():
                     s.iniziativa = 0
     managePlayer(session)
     iniziativaTime(session)
-
     roundManager(session)
-
-    # makeBackup(session)
-
-    # actualTable(session, False)
-    # print("PLAY")
-
 
 def roundManager(table):
     round = 0
@@ -136,12 +128,12 @@ def roundManager(table):
             makeBackup(table)
         enemyLeft = False
         for turnMan in table:
-            if enemyLeft == False:
+            if not enemyLeft:
                 if (turnMan.type == "enemy") and (turnMan.alive == True):
                     enemyLeft = True
-        if enemyLeft == False:
+        if not enemyLeft:
             if input("Vuoi ancora mantenere la sessione attiva? Non ci sono più nemici y/N\n ") in {"No", "no", "n",
-                                                                                                    "N"}:
+                                                                                                    "N", ""}:
                 playtime = False
 
 
@@ -156,20 +148,24 @@ def action(table, character):
 
 
 def changeLife(table, command):
-    runningAction = True
-    while runningAction:
-        print("\n \n")
-        actualTable(table, True)
-        whos = int(input("A chi? "))
-        if command == "Damage":
-            table[whos].hp -= int(input("\nDi quanto? "))
-            if table[whos].hp <= 0:
-                table[whos].alive = False
-                print("!!DIED!!")
-        elif command == "Heal":
-            table[int(input("Chi? "))].hp += int(input("\nDi quanto? "))
-        if input("E basta? y/N \n") in {"Si", "si", "s", "Yes", "yes", "y"}:
-            runningAction = False
+    try:
+        runningAction = True
+        while runningAction:
+            print("\n \n")
+            actualTable(table, True)
+            targetNumber = int(input("A chi? "))
+            if command == "Damage":
+                table[targetNumber].hp -= int(input("\nDi quanto? "))
+                if table[targetNumber].hp <= 0:
+                    table[targetNumber].alive = False
+                    print("!!DIED!!")
+            elif command == "Heal":
+                table[int(input("Chi? "))].hp += int(input("\nDi quanto? "))
+            if input("E basta? y/N \n") in {"Si", "si", "s", "Yes", "yes", "y"}:
+                runningAction = False
+    except:
+        print("Hai sbagliato a selezionare a chi fare danni! Per sta volta chiudo un occhio...i nostri eroi "
+              "non prendono danni! (almeno non qui)")
 
 
 def iniziativaTime(table):
